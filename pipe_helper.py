@@ -112,13 +112,12 @@ class read_data:
     print(f"Length of train dataloader: {len(train_dataloader)} batches of {BATCH_SIZE}")
     print(f"Length of test dataloader: {len(test_dataloader)} batches of {BATCH_SIZE}")
     if VAL_SIZE != 0: print(f"Length of val dataloader: {len(val_dataloader)} batches of {BATCH_SIZE}") 
-
-    metas_dataloaders = (metas_train, train_dataloader, metas_test, test_dataloader, metas_val, val_dataloader)
     metas_dataloaders_noval = (metas_train, train_dataloader, metas_test, test_dataloader)
-
-    vars_ = (vars_train_dataloader, vars_test_dataloader, vars_val_dataloader)
     vars_noval = (vars_train_dataloader, vars_test_dataloader)
+
     if VAL_SIZE != 0:
+      metas_dataloaders = (metas_train, train_dataloader, metas_test, test_dataloader, metas_val, val_dataloader)
+      vars_ = (vars_train_dataloader, vars_test_dataloader, vars_val_dataloader)
       return metas_dataloaders, vars_
     else:
       return metas_dataloaders_noval, vars_noval

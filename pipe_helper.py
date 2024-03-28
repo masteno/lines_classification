@@ -3,7 +3,7 @@ import torch
 import h5py
 import os
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
@@ -67,6 +67,7 @@ class read_data:
     if max_norm:
       for i,x in enumerate(X):
         X[i] = X[i] / np.max(np.nan_to_num(np.abs(x),0))
+        V[i] = V[i] / (np.max(np.nan_to_num(np.abs(x),0)))**2
     #######################
         
     X_train, X_test, y_train, y_test= train_test_split (X,y, test_size= TEST_SIZE, random_state= random_seed)
@@ -80,10 +81,7 @@ class read_data:
       X_tval = torch.tensor(X_val).type(torch.float).unsqueeze(dim=1)
       t_tval = torch.tensor(y_val)#.type(torch.float).unsqueeze(dim=1)
       V_tval = torch.tensor(vars_val).type(torch.float).unsqueeze(dim=1)
-      vars_val_data = torch.utils.data.TensorDataset(V_tval)
-      vars_val_dataloader =  DataLoader(vars_val_data, BATCH_SIZE, shuffle=False)
-      val_data  = torch.utils.data.TensorDataset(X_tval, t_tval)
-      val_dataloader  = DataLoader(val_data,  BATCH_SIZE, shuffle=False)
+
 
     X_ttrain = torch.tensor(X_train).type(torch.float).unsqueeze(dim=1) # float --> 32 bits by default
     t_ttrain = torch.tensor(y_train)#.type(torch.float).unsqueeze(dim=1) # int
@@ -94,33 +92,30 @@ class read_data:
     V_ttrain = torch.tensor(vars_train).type(torch.float).unsqueeze(dim=1)
     V_ttest  = torch.tensor(vars_test).type(torch.float).unsqueeze(dim=1)
 
-    train_data = torch.utils.data.TensorDataset(X_ttrain, t_ttrain)
-    test_data  = torch.utils.data.TensorDataset(X_ttest, t_ttest)
-    vars_train_data = torch.utils.data.TensorDataset(V_ttrain)
-    vars_test_data = torch.utils.data.TensorDataset(V_ttest)
+    train_dataset = CustomDataset(X_ttrain, V_ttrain, t_ttrain, metas_train)
+    test_dataset  = CustomDataset(X_ttest,   V_ttest,  t_ttest,  metas_test)
+    if VAL_SIZE != 0:
+      val_dataset = CustomDataset(X_tval,   V_tval,  t_tval,  metas_val)
 
     torch.manual_seed(42)
-    train_dataloader = DataLoader(train_data, BATCH_SIZE, shuffle=False)
+    train_dataloader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True)
     torch.manual_seed(42)
-    vars_train_dataloader = DataLoader(vars_train_data, BATCH_SIZE, shuffle=False)
+    test_dataloader  = DataLoader(test_dataset,  BATCH_SIZE, shuffle=True)
+    if VAL_SIZE != 0:
+      torch.manual_seed(42)
+      val_dataloader  = DataLoader(val_dataset,  BATCH_SIZE, shuffle=True)
 
-    test_dataloader  = DataLoader(test_data,  BATCH_SIZE, shuffle=False)
-    vars_test_dataloader = DataLoader(vars_test_data, BATCH_SIZE, shuffle=False)
                                       
     #print(f"Dataloaders: {train_dataloader, test_dataloader}")
     print('****')
     print(f"Length of train dataloader: {len(train_dataloader)} batches of {BATCH_SIZE}")
     print(f"Length of test dataloader: {len(test_dataloader)} batches of {BATCH_SIZE}")
     if VAL_SIZE != 0: print(f"Length of val dataloader: {len(val_dataloader)} batches of {BATCH_SIZE}") 
-    metas_dataloaders_noval = (metas_train, train_dataloader, metas_test, test_dataloader)
-    vars_noval = (vars_train_dataloader, vars_test_dataloader)
 
     if VAL_SIZE != 0:
-      metas_dataloaders = (metas_train, train_dataloader, metas_test, test_dataloader, metas_val, val_dataloader)
-      vars_ = (vars_train_dataloader, vars_test_dataloader, vars_val_dataloader)
-      return metas_dataloaders, vars_
+      return train_dataloader, test_dataloader, val_dataloader 
     else:
-      return metas_dataloaders_noval, vars_noval
+      return train_dataloader, test_dataloader 
 
 
 def plot_confusion_matrix (net,dataloader, save_path):
@@ -150,3 +145,20 @@ def plot_confusion_matrix (net,dataloader, save_path):
     plt.savefig(save_path, format='png')
 
     return data, truths, preds
+
+class CustomDataset(Dataset):
+    def __init__(self, lines, vars, labels, metas):
+        self.lines = lines
+        self.vars  = vars
+        self.labels = labels
+        self.metas  = metas
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        line_sample = self.lines[idx]
+        var_sample  = self.vars[idx]
+        label       = self.labels[idx]
+        meta_sample = self.metas[idx]
+        return {'line': line_sample, 'var': var_sample, 'label': label, 'meta': meta_sample}

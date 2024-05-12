@@ -77,7 +77,7 @@ class read_data:
     if VAL_SIZE != 0:
       X_train, X_val, y_train, y_val = train_test_split (X_train,y_train, test_size= VAL_SIZE, random_state= random_seed)
       metas_train, metas_val = train_test_split (metas_train, test_size=VAL_SIZE, random_state=random_seed)
-      vars_train, vars_val = train_test_split (vars_train, test_size=TEST_SIZE, random_state=random_seed)
+      vars_train, vars_val = train_test_split (vars_train, test_size=VAL_SIZE, random_state=random_seed)
       X_tval = torch.tensor(X_val).type(torch.float).unsqueeze(dim=1)
       t_tval = torch.tensor(y_val)#.type(torch.float).unsqueeze(dim=1)
       V_tval = torch.tensor(vars_val).type(torch.float).unsqueeze(dim=1)
@@ -147,9 +147,9 @@ def plot_confusion_matrix (net,dataloader, save_path):
     return data, truths, preds
 
 class CustomDataset(Dataset):
-    def __init__(self, lines, vars, labels, metas):
+    def __init__(self, lines, variances, labels, metas):
         self.lines = lines
-        self.vars  = vars
+        self.vars  = variances
         self.labels = labels
         self.metas  = metas
 
